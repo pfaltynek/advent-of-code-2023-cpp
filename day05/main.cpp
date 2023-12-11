@@ -1,6 +1,15 @@
 #include "./../common/aoc.hpp"
 #include <sstream>
 
+const std::string C_SEEDS_HEADER = "seeds:";
+const std::string C_SEED_TO_SOIL_HEADER = "seed-to-soil map:";
+const std::string C_SOIL_TO_FERTILIZER_HEADER = "soil-to-fertilizer map:";
+const std::string C_FERTILIZER_TO_WATER_HEADER = "fertilizer-to-water map:";
+const std::string C_WATER_TO_LIGHT_HEADER = "water-to-light map:";
+const std::string C_LIGHT_TO_TEMPERATURE_HEADER = "light-to-temperature map:";
+const std::string C_TEMPERATURE_TO_HUMIDITY = "temperature-to-humidity map:";
+const std::string C_HUMIDITY_TO_LOCATION_HEADER = "humidity-to-location map:";
+
 enum input_part_t {
 	E_INPUT_SEEDS,
 	E_INPUT_SEED2SOIL,
@@ -61,7 +70,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 					seeds_.clear();
 					ss >> txt;
 
-					if (txt != "seeds:") {
+					if (txt != C_SEEDS_HEADER) {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
 						return false;
 					}
@@ -83,7 +92,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_SEED2SOIL:
 				if (title) {
-					if (lines[i] == "seed-to-soil map:") {
+					if (lines[i] == C_SEED_TO_SOIL_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -109,7 +118,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_SOIL2FERTILIZER:
 				if (title) {
-					if (lines[i] == "soil-to-fertilizer map:") {
+					if (lines[i] == C_SOIL_TO_FERTILIZER_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -135,7 +144,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_FERTILIZER2WATER:
 				if (title) {
-					if (lines[i] == "fertilizer-to-water map:") {
+					if (lines[i] == C_FERTILIZER_TO_WATER_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -161,7 +170,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_WATER2LIGHT:
 				if (title) {
-					if (lines[i] == "water-to-light map:") {
+					if (lines[i] == C_WATER_TO_LIGHT_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -187,7 +196,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_LIGHT2TEMPERATURE:
 				if (title) {
-					if (lines[i] == "light-to-temperature map:") {
+					if (lines[i] == C_LIGHT_TO_TEMPERATURE_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -213,7 +222,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_TEMPERATURE2HUMIDITY:
 				if (title) {
-					if (lines[i] == "temperature-to-humidity map:") {
+					if (lines[i] == C_TEMPERATURE_TO_HUMIDITY) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
@@ -239,7 +248,7 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 				break;
 			case E_INPUT_HUMIDITY2LOCATION:
 				if (title) {
-					if (lines[i] == "humidity-to-location map:") {
+					if (lines[i] == C_HUMIDITY_TO_LOCATION_HEADER) {
 						title = false;
 					} else {
 						std::cout << "Invalid input format at line " << i + 1 << std::endl;
