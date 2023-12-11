@@ -45,10 +45,64 @@ class AoC2023_day05 : public AoC {
 	int64_t get_lowest_location_number(const bool part2);
 	int64_t convert_by_map(const int64_t value, std::vector<conversion_map_str>& map);
 	int64_t convert_totally(const int64_t value);
+	void print_input();
 	std::vector<uint64_t> seeds_;
 	std::vector<conversion_map_str> seed2soil_, soil2fertilizer_, fertilizer2water_, water2light_, light2temperature_, temperature2humidity_,
 		humidity2location_;
 };
+
+void AoC2023_day05::print_input() {
+	std::cout << std::endl;
+
+	std::cout << C_SEEDS_HEADER;
+
+	for (size_t i = 0; i < seeds_.size(); i++) {
+		std::cout << " " << seeds_[i];
+	}
+	std::cout << std::endl << std::endl;
+
+	std::cout << C_SEED_TO_SOIL_HEADER << std::endl;
+	for (size_t i = 0; i < seed2soil_.size(); i++) {
+		std::cout << seed2soil_[i].dest_min << " " << seed2soil_[i].src_min << " " << seed2soil_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_SOIL_TO_FERTILIZER_HEADER << std::endl;
+	for (size_t i = 0; i < soil2fertilizer_.size(); i++) {
+		std::cout << soil2fertilizer_[i].dest_min << " " << soil2fertilizer_[i].src_min << " " << soil2fertilizer_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_FERTILIZER_TO_WATER_HEADER << std::endl;
+	for (size_t i = 0; i < fertilizer2water_.size(); i++) {
+		std::cout << fertilizer2water_[i].dest_min << " " << fertilizer2water_[i].src_min << " " << fertilizer2water_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_WATER_TO_LIGHT_HEADER << std::endl;
+	for (size_t i = 0; i < water2light_.size(); i++) {
+		std::cout << water2light_[i].dest_min << " " << water2light_[i].src_min << " " << water2light_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_LIGHT_TO_TEMPERATURE_HEADER << std::endl;
+	for (size_t i = 0; i < light2temperature_.size(); i++) {
+		std::cout << light2temperature_[i].dest_min << " " << light2temperature_[i].src_min << " " << light2temperature_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_TEMPERATURE_TO_HUMIDITY << std::endl;
+	for (size_t i = 0; i < temperature2humidity_.size(); i++) {
+		std::cout << temperature2humidity_[i].dest_min << " " << temperature2humidity_[i].src_min << " " << temperature2humidity_[i].size << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << C_HUMIDITY_TO_LOCATION_HEADER << std::endl;
+	for (size_t i = 0; i < humidity2location_.size(); i++) {
+		std::cout << humidity2location_[i].dest_min << " " << humidity2location_[i].src_min << " " << humidity2location_[i].size << std::endl;
+	}
+	std::cout << std::endl << std::endl;
+}
 
 bool AoC2023_day05::init(const std::vector<std::string> lines) {
 	std::stringstream ss;
@@ -59,6 +113,14 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 	std::string txt;
 	bool title = true;
 	conversion_map_str conv_map;
+
+	seed2soil_.clear();
+	soil2fertilizer_.clear();
+	fertilizer2water_.clear();
+	water2light_.clear();
+	light2temperature_.clear();
+	temperature2humidity_.clear();
+	humidity2location_.clear();
 
 	for (size_t i = 0; i < lines.size(); i++) {
 		switch (part) {
@@ -276,6 +338,8 @@ bool AoC2023_day05::init(const std::vector<std::string> lines) {
 		}
 	}
 
+	// print_input();
+
 	return all_parts;
 }
 
@@ -305,7 +369,7 @@ int64_t AoC2023_day05::convert_totally(const int64_t value) {
 
 int64_t AoC2023_day05::get_lowest_location_number(const bool part2 = false) {
 	uint64_t result = UINT64_MAX;
-	uint64_t coverted, seed;
+	uint64_t converted;
 	std::vector<uint64_t> seed_ranges;
 
 	if (part2) {
@@ -324,18 +388,15 @@ int64_t AoC2023_day05::get_lowest_location_number(const bool part2 = false) {
 
 		for (size_t i = seed_ranges[r]; i < seed_ranges[r] + seed_ranges[r + 1]; i++) {
 
-			coverted = convert_totally(i);
+			converted = convert_totally(i);
 
-			if (coverted < result) {
-				result = coverted;
-				seed = i;
+			if (converted < result) {
+				result = converted;
 			}
 		}
-
-		std::cout << "\t" << seed << " -> " << result << std::endl;
 	}
 
-	return result; // 3624399240
+	return result;
 }
 
 int32_t AoC2023_day05::get_aoc_day() {
