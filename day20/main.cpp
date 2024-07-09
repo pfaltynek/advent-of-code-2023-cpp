@@ -1,86 +1,106 @@
 #include "./../common/aoc.hpp"
 #include "./../common/string-utils.hpp"
 #include <map>
-#include <regex>
-#include <set>
+#include <queue>
+#include <sstream>
 
-const std::string C_ACCEPTED = "A";
-const std::string C_REJECTED = "R";
-const std::string C_BEGIN_WORKFLOW = "in";
-const std::regex C_REGEX_WORKFLOW("^([a-z]+)\\{(.+),([a-zAR]+)\\}$");
-const std::regex C_REGEX_RULE("^([axsm])([<>])(\\d+):([a-zAR]+)$");
-const std::regex C_REGEX_PART("^\\{x=(\\d+),m=(\\d+),a=(\\d+),s=(\\d+)\\}$");
-const uint16_t C_RATING_MIN = 1;
-const uint16_t C_RATING_MAX = 4000;
-const int64_t C_COMBINATIONS_MAX = 4000LL * 4000LL * 4000LL * 4000LL;
+const std::string C_BROADCASTER_NAME = "broadcaster";
+const std::string C_BUTTON_MODULE_NAME = "button";
+const int64_t C_PART1_BUTTON_PUSHES_COUNT = 1000;
 
-static bool get_ranges_intersection(std::pair<uint16_t, uint16_t>& main, const std::pair<uint16_t, uint16_t> r) {
-	if (main.first < r.first) {
-		if (main.second < r.first) {
-			return false;
-		}
+enum module_type_t { E_MODULE_FLIP_FLOP, E_MODULE_CONJUNCTION, E_MODULE_BROADCASTER };
 
-		main.first = r.first;
-	} else {
-		if (r.second < main.first) {
-			return false;
-		}
+struct pulse_out_str {
+	std::string name;
+	bool high_pulse;
+};
+
+struct pulse_str {
+	std::string from, to;
+	bool high_pulse;
+};
+
+struct module_str {
+	module_type_t module_type;
+	std::string name;
+	std::map<std::string, bool> states;
+	std::vector<std::string> targets;
+	bool flip_flop_state;
+
+	void init_flip_flop(const std::string mname, const std::vector<std::string> ouputs) {
+		init(E_MODULE_FLIP_FLOP, mname, ouputs);
 	}
 
-	main.second = std::min(main.second, r.second);
-
-	return true;
-}
-
-struct conditions_str {
-	std::pair<uint16_t, uint16_t> x, m, a, s;
-
-	conditions_str() {
-		x = m = a = s = {C_RATING_MIN, C_RATING_MAX};
+	void init_conjunction(const std::string mname, const std::vector<std::string> ouputs) {
+		init(E_MODULE_CONJUNCTION, mname, ouputs);
 	}
 
-	bool update(const char parameter, std::pair<uint16_t, uint16_t> range) {
-		switch (parameter) {
-			case 'x':
-				return get_ranges_intersection(x, range);
-			case 'm':
-				return get_ranges_intersection(m, range);
-			case 'a':
-				return get_ranges_intersection(a, range);
-			case 's':
-				return get_ranges_intersection(s, range);
+	void init_broadcaster(const std::string mname, const std::vector<std::string> ouputs) {
+		init(E_MODULE_BROADCASTER, mname, ouputs);
+	}
+
+	std::vector<pulse_out_str> receive_pulse(const std::string source, const bool high_pulse) {
+		std::vector<pulse_out_str> result;
+		bool pulse = false;
+
+		result.clear();
+
+		switch (module_type) {
+			case E_MODULE_BROADCASTER:
+				for (auto& dest : targets) {
+					result.push_back({dest, high_pulse});
+				}
+				break;
+
+			case E_MODULE_FLIP_FLOP:
+				if (!high_pulse) {
+					flip_flop_state = !flip_flop_state;
+
+					for (auto& dest : targets) {
+						result.push_back({dest, flip_flop_state});
+					}
+				}
+				break;
+
+			case E_MODULE_CONJUNCTION:
+				states[source] = high_pulse;
+
+				for (auto& pair : states) {
+					if (!pair.second) {
+						pulse = true;
+						break;
+					}
+				}
+
+				for (auto& dest : targets) {
+					result.push_back({dest, pulse});
+				}
+				break;
+
 			default:
 				assert(false);
-				return false;
-		}
-	}
-};
-
-struct rule_str {
-	char rating;
-	uint16_t value;
-	bool is_greater;
-	std::string send_to;
-};
-
-struct workflow_str {
-	std::string name;
-	std::vector<rule_str> rules;
-	std::string send_to;
-
-	bool exists_rule_sending_to(std::string target) {
-		for (auto& rule : rules) {
-			if (rule.send_to == target) {
-				return true;
-			}
+				break;
 		}
 
-		return false;
+		return result;
 	}
-};
 
-struct part_str {
-	uint16_t x, m, a, s;
+	void add_module_input(const std::string name) {
+		if (module_type == E_MODULE_CONJUNCTION) {
+			states[name] = false;
+		}
+	}
+
+  private:
+	void init(const module_type_t mod_type, const std::string mname, const std::vector<std::string> outputs) {
+		module_type = mod_type;
+		flip_flop_state = false;
+		name = mname;
+
+		states.clear();
+
+		targets = outputs;
+	}
 };
 
 class AoC2023_day20 : public AoC {
@@ -93,217 +113,116 @@ class AoC2023_day20 : public AoC {
 	int32_t get_aoc_year();
 
   private:
-	std::vector<part_str> parts_;
-	std::map<std::string, workflow_str> workflows_;
-	std::map<std::string, std::set<std::string>> backtrack_;
-	int64_t get_all_accepted_parts_ratings_sum();
-	int64_t get_all_distinct_ratings_combinations_accepted();
-	void rekurz(const std::string current, const std::string path, conditions_str cond, std::vector<conditions_str>& conditions);
+	std::map<std::string, module_str> modules_;
+	int64_t get_pulses_total(const int64_t rounds);
 };
 
 bool AoC2023_day20::init(const std::vector<std::string> lines) {
-	bool parts = false;
-	std::smatch sm;
-	workflow_str wf;
-	rule_str rule;
-	part_str part;
-	std::string item;
+	std::stringstream ss;
+	char c;
+	std::string name, tmp;
+	std::vector<std::string> names;
+	module_str module;
 
-	workflows_.clear();
-	parts_.clear();
-	backtrack_.clear();
+	modules_.clear();
 
 	for (uint32_t i = 0; i < lines.size(); i++) {
-		if (lines[i].empty()) {
-			parts = true;
-			continue;
+		ss.clear();
+		ss.str(lines[i]);
+
+		names.clear();
+
+		c = ss.get();
+		ss >> name;
+		ss.ignore(4); // " -> "
+
+		while (!ss.eof()) {
+			ss >> tmp;
+
+			if (tmp.back() == ',') {
+				tmp.pop_back();
+			}
+
+			names.push_back(tmp);
 		}
 
-		if (parts) {
-			if (std::regex_match(lines[i], sm, C_REGEX_PART)) {
-				part.x = std::stoi(sm.str(1));
-				part.m = std::stoi(sm.str(2));
-				part.a = std::stoi(sm.str(3));
-				part.s = std::stoi(sm.str(4));
-
-				parts_.push_back(part);
-			} else {
-				std::cout << "Invalid part definition at line " << i + 1 << std::endl;
+		switch (c) {
+			case '&':
+				module.init_conjunction(name, names);
+				break;
+			case '%':
+				module.init_flip_flop(name, names);
+				break;
+			case 'b':
+				name = c + name;
+				module.init_broadcaster(name, names);
+				break;
+			default:
+				std::cout << "Invalid module definition at line " << i + 1 << std::endl;
 				return false;
-			}
-		} else {
-			if (std::regex_match(lines[i], sm, C_REGEX_WORKFLOW)) {
-				wf.name = sm.str(1);
-				item = sm.str(2);
-				wf.send_to = sm.str(3);
-				backtrack_[wf.send_to].emplace(wf.name);
+		}
 
-				std::vector<std::string> rules = split(item, ",");
+		modules_[module.name] = module;
+	}
 
-				wf.rules.clear();
+	if (!modules_.count(C_BROADCASTER_NAME)) {
+		std::cout << "Module BROADCASTER definition missing" << std::endl;
+		return false;
+	}
 
-				for (size_t r = 0; r < rules.size(); r++) {
-					if (std::regex_match(rules[r], sm, C_REGEX_RULE)) {
-						rule.rating = sm.str(1)[0];
-						rule.is_greater = sm.str(2) == ">";
-						rule.value = std::stoi(sm.str(3));
-						rule.send_to = sm.str(4);
-						wf.rules.push_back(rule);
-						backtrack_[rule.send_to].emplace(wf.name);
-					} else {
-						std::cout << "Invalid workflow definition at line " << i + 1 << " rule " << r + 1 << std::endl;
-						return false;
-					}
-				}
-
-				workflows_[wf.name] = wf;
-			} else {
-				std::cout << "Invalid workflow definition at line " << i + 1 << std::endl;
-				return false;
-			}
+	for (auto& pair : modules_) {
+		for (auto& target : pair.second.targets) {
+			modules_[target].add_module_input(pair.first);
 		}
 	}
 
 	return true;
 }
 
-int64_t AoC2023_day20::get_all_accepted_parts_ratings_sum() {
-	int64_t result = 0;
-	std::vector<part_str> r, a;
-	workflow_str wf;
-	std::string next;
-	uint16_t tmp;
-	bool comparison;
+int64_t AoC2023_day20::get_pulses_total(const int64_t rounds) {
+	int64_t result = 0, pulses_high_count = 0, pulses_low_count = 0;
+	std::queue<pulse_str> q = {};
+	pulse_str pulse;
+	std::vector<pulse_out_str> out_pulses;
+	std::string from;
 
-	a.clear();
-	r.clear();
+	for (int64_t i = 0; i < rounds; i++) {
+		pulse.from = C_BUTTON_MODULE_NAME;
+		pulse.to = C_BROADCASTER_NAME;
+		pulse.high_pulse = false;
 
-	for (size_t i = 0; i < parts_.size(); i++) {
-		wf = workflows_[C_BEGIN_WORKFLOW];
-		next = wf.send_to;
-
-		while (true) {
-			for (size_t j = 0; j < wf.rules.size(); j++) {
-				switch (wf.rules[j].rating) {
-					case 'x':
-						tmp = parts_[i].x;
-						break;
-					case 'm':
-						tmp = parts_[i].m;
-						break;
-					case 'a':
-						tmp = parts_[i].a;
-						break;
-					case 's':
-						tmp = parts_[i].s;
-						break;
-					default:
-						assert(false);
-						break;
-				}
-
-				if (wf.rules[j].is_greater) {
-					comparison = tmp > wf.rules[j].value;
-				} else {
-					comparison = tmp < wf.rules[j].value;
-				}
-
-				if (comparison) {
-					next = wf.rules[j].send_to;
-					break;
-				}
+		q.emplace(pulse);
+		while (q.size()) {
+			pulse = q.front();
+			q.pop();
+			if (pulse.high_pulse) {
+				pulses_high_count++;
+			} else {
+				pulses_low_count++;
 			}
 
-			if (next == C_ACCEPTED) {
-				a.push_back(parts_[i]);
-				break;
-			} else if (next == C_REJECTED) {
-				r.push_back(parts_[i]);
-				break;
-			} else {
-				wf = workflows_[next];
-				next = wf.send_to;
+			if (!modules_.count(pulse.to)) {
+				assert(false);
+			}
+#if LOG
+			std::cout << pulse.from << " " << (pulse.high_pulse ? "H " : "L ") << " -> " << pulse.to << std::endl;
+#endif
+			out_pulses = modules_[pulse.to].receive_pulse(pulse.from, pulse.high_pulse);
+			from = pulse.to;
+
+			for (size_t j = 0; j < out_pulses.size(); j++) {
+				pulse.from = from;
+				pulse.to = out_pulses[j].name;
+				pulse.high_pulse = out_pulses[j].high_pulse;
+
+				q.push(pulse);
 			}
 		}
 	}
 
-	for (auto& acc : a) {
-		result += acc.a + acc.m + acc.s + acc.x;
-	}
+	result = pulses_high_count * pulses_low_count;
 
 	return result;
-}
-
-int64_t AoC2023_day20::get_all_distinct_ratings_combinations_accepted() {
-	int64_t result = 0, subresult;
-	std::vector<conditions_str> conditions;
-	conditions_str cond;
-
-	rekurz(C_REJECTED, C_REJECTED, cond, conditions);
-
-	for (auto& cond : conditions) {
-		subresult = static_cast<int64_t>(cond.x.second - cond.x.first + 1);
-		subresult *= static_cast<int64_t>(cond.m.second - cond.m.first + 1);
-		subresult *= static_cast<int64_t>(cond.a.second - cond.a.first + 1);
-		subresult *= static_cast<int64_t>(cond.s.second - cond.s.first + 1);
-		result += subresult;
-	}
-
-	result = C_COMBINATIONS_MAX - result;
-
-	return result;
-}
-
-void AoC2023_day20::rekurz(const std::string current, const std::string path, conditions_str cond, std::vector<conditions_str>& conditions) {
-	conditions_str c1, c2;
-	std::pair<uint16_t, uint16_t> range;
-
-	for (auto& prev : backtrack_[current]) {
-		c1 = cond;
-
-		for (auto& rule : workflows_[prev].rules) {
-
-			if (rule.send_to == current) {
-				if (rule.is_greater) {
-					range.first = rule.value + 1;
-					range.second = C_RATING_MAX;
-				} else {
-					range.first = C_RATING_MIN;
-					range.second = rule.value - 1;
-				}
-				c2 = c1;
-				if (!c2.update(rule.rating, range)){
-					return;
-				}
-
-				if (prev == C_BEGIN_WORKFLOW) {
-					conditions.push_back(c2);
-				} else {
-					rekurz(prev, prev + "->" + path, c2, conditions);
-				}
-			}
-			
-			if (rule.is_greater) {
-				range.first = C_RATING_MIN;
-				range.second = rule.value;
-			} else {
-				range.first = rule.value;
-				range.second = C_RATING_MAX;
-			}
-
-			if (!c1.update(rule.rating, range)) {
-				return;
-			}
-		}
-
-		if (workflows_[prev].send_to == current) {
-			if (prev == C_BEGIN_WORKFLOW) {
-				conditions.push_back(c1);
-			} else {
-				rekurz(prev, prev + "->" + path, c1, conditions);
-			}
-		}
-	}
 }
 
 int32_t AoC2023_day20::get_aoc_day() {
@@ -317,18 +236,19 @@ int32_t AoC2023_day20::get_aoc_year() {
 void AoC2023_day20::tests() {
 	int64_t result;
 
-	if (init({"px{a<2006:qkq,m>2090:A,rfg}", "pv{a>1716:R,A}", "lnx{m>1548:A,A}", "rfg{s<537:gd,x>2440:R,A}", "qs{s>3448:A,lnx}", "qkq{x<1416:A,crn}",
-			  "crn{x>2662:A,R}", "in{s<1351:px,qqz}", "qqz{s>2770:qs,m<1801:hdj,R}", "gd{a>3333:R,R}", "hdj{m>838:A,pv}", "", "{x=787,m=2655,a=1222,s=2876}",
-			  "{x=1679,m=44,a=2067,s=496}", "{x=2036,m=264,a=79,s=2244}", "{x=2461,m=1339,a=466,s=291}", "{x=2127,m=1623,a=2188,s=1013}"})) {
-		result = get_all_accepted_parts_ratings_sum();			   // 19114
-		result = get_all_distinct_ratings_combinations_accepted(); // 167409079868000
+	if (init({"broadcaster -> a, b, c", "%a -> b", "%b -> c", "%c -> inv", "&inv -> a"})) {
+		result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT); // 32000000
+	}
+
+	if (init({"broadcaster -> a", "%a -> inv, con", "&inv -> b", "%b -> con", "&con -> output"})) {
+		result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT); // 11687500
 	}
 }
 
 bool AoC2023_day20::part1() {
 	int64_t result = 0;
 
-	result = get_all_accepted_parts_ratings_sum();
+	result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT);
 
 	result1_ = std::to_string(result);
 
@@ -338,7 +258,7 @@ bool AoC2023_day20::part1() {
 bool AoC2023_day20::part2() {
 	int64_t result = 0;
 
-	result = get_all_distinct_ratings_combinations_accepted();
+	result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT);
 
 	result2_ = std::to_string(result);
 
