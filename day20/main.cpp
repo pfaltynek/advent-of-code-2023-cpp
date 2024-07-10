@@ -1,11 +1,14 @@
 #include "./../common/aoc.hpp"
 #include "./../common/string-utils.hpp"
+#include <algorithm>
 #include <map>
 #include <queue>
 #include <sstream>
 
+
 const std::string C_BROADCASTER_NAME = "broadcaster";
 const std::string C_BUTTON_MODULE_NAME = "button";
+const std::string C_TARGET_MODULE_NAME = "rx";
 const int64_t C_PART1_BUTTON_PUSHES_COUNT = 1000;
 
 enum module_type_t { E_MODULE_FLIP_FLOP, E_MODULE_CONJUNCTION, E_MODULE_BROADCASTER };
@@ -91,6 +94,14 @@ struct module_str {
 		}
 	}
 
+	void reset() {
+		flip_flop_state = false;
+
+		for (auto& pair : states) {
+			pair.second = false;
+		}
+	}
+
   private:
 	void init(const module_type_t mod_type, const std::string mname, const std::vector<std::string> outputs) {
 		module_type = mod_type;
@@ -114,7 +125,7 @@ class AoC2023_day20 : public AoC {
 
   private:
 	std::map<std::string, module_str> modules_;
-	int64_t get_pulses_total(const int64_t rounds);
+	int64_t get_pulses_total(const bool part2, const int64_t rounds);
 };
 
 bool AoC2023_day20::init(const std::vector<std::string> lines) {
@@ -179,19 +190,37 @@ bool AoC2023_day20::init(const std::vector<std::string> lines) {
 	return true;
 }
 
-int64_t AoC2023_day20::get_pulses_total(const int64_t rounds) {
-	int64_t result = 0, pulses_high_count = 0, pulses_low_count = 0;
+int64_t AoC2023_day20::get_pulses_total(const bool part2, const int64_t rounds) {
+	int64_t result = 0, pulses_high_count = 0, pulses_low_count = 0, counter = 0;
 	std::queue<pulse_str> q = {};
 	pulse_str pulse;
 	std::vector<pulse_out_str> out_pulses;
 	std::string from;
+	bool finished = false;
+	std::vector<std::string> part2parts = {};
 
-	for (int64_t i = 0; i < rounds; i++) {
+	if (part2) {
+		for (auto& module : modules_) {
+			module.second.reset(); // for part2 all modules have to be reset into default state
+
+			// acording to general sugestion on reddit is much simpler and quicker to go back in tree a bit and find cycle numbers
+			// of all sources of conjuction module which outputs to 'rx'
+			if ((module.second.module_type == E_MODULE_CONJUNCTION) && (module.second.targets[0] == C_TARGET_MODULE_NAME)) {
+				for (auto& state : module.second.states) {
+					part2parts.push_back(state.first);
+				}
+			}
+		}
+
+		result = 1;
+	}
+
+	while (true) {
 		pulse.from = C_BUTTON_MODULE_NAME;
 		pulse.to = C_BROADCASTER_NAME;
 		pulse.high_pulse = false;
 
-		q.emplace(pulse);
+		q.push(pulse);
 		while (q.size()) {
 			pulse = q.front();
 			q.pop();
@@ -204,9 +233,20 @@ int64_t AoC2023_day20::get_pulses_total(const int64_t rounds) {
 			if (!modules_.count(pulse.to)) {
 				assert(false);
 			}
-#if LOG
-			std::cout << pulse.from << " " << (pulse.high_pulse ? "H " : "L ") << " -> " << pulse.to << std::endl;
-#endif
+
+			if (part2) {
+				auto it = std::find(part2parts.begin(), part2parts.end(), pulse.from);
+				if (it != part2parts.end() && pulse.high_pulse) {
+					result *= (counter + 1);
+
+					part2parts.erase(it);
+
+					if (part2parts.empty()) {
+						finished = true;
+					}
+				}
+			}
+
 			out_pulses = modules_[pulse.to].receive_pulse(pulse.from, pulse.high_pulse);
 			from = pulse.to;
 
@@ -218,9 +258,20 @@ int64_t AoC2023_day20::get_pulses_total(const int64_t rounds) {
 				q.push(pulse);
 			}
 		}
-	}
 
-	result = pulses_high_count * pulses_low_count;
+		counter++;
+
+		if (part2) {
+			if (finished) {
+				break;
+			}
+		} else {
+			if (counter == rounds) {
+				result = pulses_high_count * pulses_low_count;
+				break;
+			}
+		}
+	}
 
 	return result;
 }
@@ -237,18 +288,18 @@ void AoC2023_day20::tests() {
 	int64_t result;
 
 	if (init({"broadcaster -> a, b, c", "%a -> b", "%b -> c", "%c -> inv", "&inv -> a"})) {
-		result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT); // 32000000
+		result = get_pulses_total(false, C_PART1_BUTTON_PUSHES_COUNT); // 32000000
 	}
 
 	if (init({"broadcaster -> a", "%a -> inv, con", "&inv -> b", "%b -> con", "&con -> output"})) {
-		result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT); // 11687500
+		result = get_pulses_total(false, C_PART1_BUTTON_PUSHES_COUNT); // 11687500
 	}
 }
 
 bool AoC2023_day20::part1() {
 	int64_t result = 0;
 
-	result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT);
+	result = get_pulses_total(false, C_PART1_BUTTON_PUSHES_COUNT);
 
 	result1_ = std::to_string(result);
 
@@ -258,7 +309,7 @@ bool AoC2023_day20::part1() {
 bool AoC2023_day20::part2() {
 	int64_t result = 0;
 
-	result = get_pulses_total(C_PART1_BUTTON_PUSHES_COUNT);
+	result = get_pulses_total(true, C_PART1_BUTTON_PUSHES_COUNT);
 
 	result2_ = std::to_string(result);
 
