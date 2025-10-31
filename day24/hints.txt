@@ -1,0 +1,39 @@
+
+
+
+R:  (Rx, Ry, Rz) (Rvx, Rvy, Rvz)
+H1: (X1, Y1, Z1) (Xv1, Yv1, Zv1)
+H2: (X2, Y2, Z2) (Xv2, Yv2, Zv2)
+
+Rx + t.Rvx = X1 + t.Xv1 => t = (Rx - X1) / (Xv1 - Rvx)
+Ry + t.Rvy = Y1 + t.Yv1 => t = (Ry - Y1) / (Yv1 - Rvy)
+Rz + t.Rvz = Z1 + t.Zv1 => t = (Rz - Z1) / (Zv1 - Rvz)
+
+(Rx - X1) / (Xv1 - Rvx) = (Ry - Y1) / (Yv1 - Rvy) ***
+(Rx - X1) (Yv1 - Rvy) = (Ry - Y1) (Xv1 - Rvx)
+Rx.Yv1 - Rx.Rvy - X1.Yv1 + X1.Rvy = Ry.Xv1 - Ry.Rvx - Y1.Xv1 + Y1.Rvx
+
+Ry.Rvx - Rx.Rvy = Ry.Xv1 - Y1.Xv1 + Y1.Rvx - Rx.Yv1 + X1.Yv1 - X1.Rvy
+Ry.Rvx - Rx.Rvy = Ry.Xv2 - Y2.Xv2 + Y2.Rvx - Rx.Yv2 + X2.Yv2 - X2.Rvy
+
+Ry.Xv1 - Y1.Xv1 + Y1.Rvx - Rx.Yv1 + X1.Yv1 - X1.Rvy = Ry.Xv2 - Y2.Xv2 + Y2.Rvx - Rx.Yv2 + X2.Yv2 - X2.Rvy
+
+Ry.Xv1 - Ry.Xv2 + Y1.Rvx - Y2.Rvx + Rx.Yv2 - Rx.Yv1 + X2.Rvy - X1.Rvy = Y1.Xv1 - X1.Yv1 - Y2.Xv2 + X2.Yv2
+Rx.(Yv2 - Yv1) + Ry.(Xv1 - Xv2) + Rvx.(Y1 - Y2) + Rvy.(X2 - X1) = Y1.Xv1 - X1.Yv1 - Y2.Xv2 + X2.Yv2
+
+=> from Gaussian elimination get Rx, Ry, Rvx and Rvy values
+
+***
+(Rx - X1) / (Xv1 - Rvx) = (Rz - Z1) / (Zv1 - Rvz)
+(Rx - X1) (Zv1 - Rvz) = (Rz - Z1) (Xv1 - Rvx)
+Rx.Zv1 - Rx.Rvz - X1.Zv1 + X1.Rvz = Rz.Xv1 - Rz.Rvx - Z1.Xv1 + Z1.Rvx
+
+Rz.Rvx - Rx.Rvz = Rz.Xv1 - Z1.Xv1 + Z1.Rvx - Rx.Zv1 + X1.Zv1 - X1.Rvz
+Rz.Rvx - Rx.Rvz = Rz.Xv2 - Z2.Xv2 + Z2.Rvx - Rx.Zv2 + X2.Zv2 - X2.Rvz
+
+Rx.Zv2 - Rx.Zv1 + Rz.Xv1 - Rz.Xv2 + Z1.Rvx - Z2.Rvx + X2.Rvz - X1.Rvz = Z1.Xv1 - X1.Zv1 - Z2.Xv2 + X2.Zv2
+Rx.(Zv2 - Zv1) + Rz.(Xv1 - Xv2) + Rvx.(Z1 - Z2) + Rvz.(X2 - X1) = Z1.Xv1 - X1.Zv1 - Z2.Xv2 + X2.Zv2
+
+Rx and Rvx already known:
+Rz.(Xv1 - Xv2) + Rvz.(X2 - X1) = Z1.Xv1 - X1.Zv1 - Z2.Xv2 + X2.Zv2 - Rx.(Zv2 - Zv1) - Rvx.(Z1 - Z2)
+
